@@ -77,11 +77,8 @@ function initDesktop() {
   };
   el.view.style.display = 'flex';
 
-  // QR
-  const pairUrl = `${location.origin}/?token=${TOKEN}&role=phone`;
-  QRCode.toCanvas(document.getElementById('qr-canvas'), pairUrl, {
-    width: 200, margin: 2, color: { dark: '#000', light: '#fff' },
-  });
+  // QR — generated server-side, no CDN dependency
+  document.getElementById('qr-img').src = `/qr?token=${TOKEN}`;
 
   // State
   const cardIds = new Set();

@@ -5,6 +5,7 @@ const http     = require('http');
 const { WebSocketServer, WebSocket } = require('ws');
 const multer   = require('multer');
 const { v4: uuidv4 } = require('uuid');
+const QRCode   = require('qrcode');
 const path     = require('path');
 
 const app    = express();
@@ -25,6 +26,23 @@ setInterval(() => {
 
 // ── Static ────────────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ── QR code image ────────────────────────────────────────────────────────────
+app.get('/qr', async (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.status(400).send('Missing token');
+  const host     = req.get('x-forwarded-host') || req.get('host');
+  const proto    = req.get('x-forwarded-proto') || req.protocol;
+  const pairUrl  = `${proto}://${host}/?token=${token}&role=phone`;
+  try {
+    const png = await QRCode.toBuffer(pairUrl, { width: 200, margin: 2 });
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(png);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
 
 // ── Upload ────────────────────────────────────────────────────────────────────
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
