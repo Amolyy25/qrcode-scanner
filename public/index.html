@@ -10,143 +10,194 @@
 </head>
 <body>
 
-  <!-- ── Desktop view ─────────────────────────────────────────────── -->
-  <div id="desktop" class="view" style="display:none">
-    <aside class="sidebar">
-      <div class="brand">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <rect x="2" y="2" width="7" height="7" rx="1.5" fill="currentColor"/>
-          <rect x="11" y="2" width="7" height="7" rx="1.5" fill="currentColor"/>
-          <rect x="2" y="11" width="7" height="7" rx="1.5" fill="currentColor"/>
-          <rect x="13" y="13" width="2" height="2" fill="currentColor"/>
-          <rect x="16" y="13" width="2" height="2" fill="currentColor"/>
-          <rect x="13" y="16" width="5" height="2" fill="currentColor"/>
-        </svg>
-        <span class="brand-name">QR Share</span>
-      </div>
+<!-- ═══ DESKTOP ═══════════════════════════════════════════════════════════════ -->
+<div id="desktop" class="view" style="display:none">
 
-      <div class="qr-section">
-        <div class="qr-frame">
-          <img id="qr-img" width="200" height="200" alt="QR Code" />
-        </div>
-        <div class="d-status">
-          <span class="dot" id="d-dot"></span>
-          <span id="d-status-text">Waiting for phone…</span>
-        </div>
-        <p class="qr-hint">Scan with iPhone to connect</p>
-      </div>
+  <aside class="sidebar">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
+        <rect x="2" y="2" width="7" height="7" rx="1.5" fill="currentColor"/>
+        <rect x="11" y="2" width="7" height="7" rx="1.5" fill="currentColor"/>
+        <rect x="2" y="11" width="7" height="7" rx="1.5" fill="currentColor"/>
+        <rect x="13" y="13" width="2" height="2" fill="currentColor"/>
+        <rect x="16" y="13" width="2" height="2" fill="currentColor"/>
+        <rect x="13" y="16" width="5" height="2" fill="currentColor"/>
+      </svg>
+      <span class="brand-name">QR Share</span>
+    </div>
 
-      <label class="send-btn" id="d-send-label">
-        <input type="file" id="d-file-input" multiple hidden />
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path d="M7 10V2M4 5l3-3 3 3"/>
-          <path d="M2 11h10" stroke-linecap="round"/>
-        </svg>
-        Send files to phone
-      </label>
-
-      <div class="d-progress-wrap" id="d-progress" style="display:none">
-        <div class="progress-filename" id="d-pname"></div>
-        <div class="track"><div class="fill" id="d-pfill"></div></div>
+    <!-- QR + status -->
+    <div class="qr-block">
+      <div class="qr-frame">
+        <img id="qr-img" width="220" height="220" alt="QR Code" />
       </div>
-
-      <div class="sidebar-foot">
-        <button class="btn-ghost" id="d-reset">↺ New session</button>
+      <div class="conn-row">
+        <span class="dot" id="d-dot"></span>
+        <span id="d-status">Waiting for phone…</span>
       </div>
-    </aside>
+      <p class="qr-hint">Scan with your iPhone to connect</p>
+    </div>
 
-    <main class="workspace" id="workspace">
-      <div class="ws-header">
-        <span class="ws-title">Workspace</span>
-        <span class="ws-count" id="ws-count"></span>
-      </div>
+    <!-- Send -->
+    <label class="btn-send" id="d-send-label">
+      <input type="file" id="d-file" multiple hidden />
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <path d="M8 11V3M5 6l3-3 3 3"/><path d="M2 13h12"/>
+      </svg>
+      Send files to phone
+    </label>
+
+    <!-- Upload progress -->
+    <div id="d-prog" class="prog-box" style="display:none">
+      <div class="prog-name" id="d-prog-name"></div>
+      <div class="track"><div class="fill" id="d-prog-fill"></div></div>
+      <div class="prog-pct" id="d-prog-pct">0%</div>
+    </div>
+
+    <div class="sidebar-foot">
+      <button class="btn-ghost" id="d-reset">↺ New session</button>
+    </div>
+  </aside>
+
+  <!-- Workspace + Library -->
+  <main class="main-area">
+    <div class="tabs-row">
+      <button class="tab active" id="tab-ws"  data-tab="ws">Workspace</button>
+      <button class="tab"        id="tab-lib" data-tab="lib">
+        Library
+        <span class="lib-badge" id="lib-badge" style="display:none"></span>
+      </button>
+    </div>
+
+    <!-- Workspace panel -->
+    <div class="panel" id="panel-ws">
       <div class="ws-grid" id="ws-grid">
-        <div class="ws-empty" id="ws-empty">
-          <div class="ws-empty-icon">
-            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" opacity=".25">
-              <rect x="4" y="4" width="14" height="14" rx="3" fill="white"/>
-              <rect x="22" y="4" width="14" height="14" rx="3" fill="white"/>
-              <rect x="4" y="22" width="14" height="14" rx="3" fill="white"/>
-              <rect x="25" y="25" width="4" height="4" fill="white"/>
-              <rect x="31" y="25" width="4" height="4" fill="white"/>
-              <rect x="25" y="31" width="10" height="4" fill="white"/>
-            </svg>
-          </div>
-          <p>Files you send or receive will appear here</p>
-          <p class="ws-empty-sub">Drop files anywhere to send them to your phone</p>
+        <div class="empty-state" id="ws-empty">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" opacity=".2">
+            <rect x="4" y="4" width="16" height="16" rx="3" fill="white"/>
+            <rect x="28" y="4" width="16" height="16" rx="3" fill="white"/>
+            <rect x="4" y="28" width="16" height="16" rx="3" fill="white"/>
+            <rect x="30" y="30" width="5" height="5" fill="white"/>
+            <rect x="39" y="30" width="5" height="5" fill="white"/>
+            <rect x="30" y="39" width="14" height="5" fill="white"/>
+          </svg>
+          <p>Files you send or receive appear here</p>
+          <p class="empty-sub">Drop files anywhere · up to 2 GB · all formats</p>
         </div>
       </div>
 
-      <!-- Drag overlay -->
-      <div class="drag-overlay" id="drag-overlay">
-        <div class="drag-inner">
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M24 32V12M16 20l8-8 8 8"/>
-            <path d="M8 38h32" stroke-linecap="round"/>
+      <!-- Global drop overlay -->
+      <div class="drop-overlay" id="drop-overlay">
+        <div class="drop-inner">
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M26 36V14M18 22l8-8 8 8"/><path d="M8 42h36"/>
           </svg>
           <p>Drop to send to phone</p>
         </div>
       </div>
-    </main>
-  </div>
+    </div>
 
-  <!-- ── Mobile view ──────────────────────────────────────────────── -->
-  <div id="mobile" class="view" style="display:none">
-    <header class="m-head">
-      <div class="brand">
-        <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-          <rect x="2" y="2" width="7" height="7" rx="1.5" fill="currentColor"/>
-          <rect x="11" y="2" width="7" height="7" rx="1.5" fill="currentColor"/>
-          <rect x="2" y="11" width="7" height="7" rx="1.5" fill="currentColor"/>
-          <rect x="13" y="13" width="2" height="2" fill="currentColor"/>
-          <rect x="16" y="13" width="2" height="2" fill="currentColor"/>
-          <rect x="13" y="16" width="5" height="2" fill="currentColor"/>
-        </svg>
-        <span class="brand-name">QR Share</span>
-      </div>
-      <div class="m-status-pill" id="m-status-pill">
-        <span class="dot" id="m-dot"></span>
-        <span id="m-status-text">Connecting…</span>
-      </div>
-    </header>
-
-    <section class="m-section">
-      <div class="m-section-label">Send to Mac</div>
-      <div class="m-btns">
-        <label class="m-btn">
-          <input type="file" accept="image/*" capture="camera" id="m-cam" hidden />
-          <span class="m-btn-icon">📷</span>
-          <span class="m-btn-label">Camera</span>
-        </label>
-        <label class="m-btn">
-          <input type="file" accept="image/*,video/*" multiple id="m-photos" hidden />
-          <span class="m-btn-icon">🖼️</span>
-          <span class="m-btn-label">Photos</span>
-        </label>
-        <label class="m-btn">
-          <input type="file" multiple id="m-any" hidden />
-          <span class="m-btn-icon">📁</span>
-          <span class="m-btn-label">Files</span>
-        </label>
-      </div>
-
-      <div class="m-progress-wrap" id="m-progress" style="display:none">
-        <div class="m-progress-top">
-          <span class="progress-filename" id="m-pname"></span>
-          <span class="m-ppct" id="m-ppct">0%</span>
+    <!-- Library panel -->
+    <div class="panel" id="panel-lib" style="display:none">
+      <div class="ws-grid" id="lib-grid">
+        <div class="empty-state" id="lib-empty">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".25">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke-linejoin="round"/>
+            <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+          </svg>
+          <p>No saved files yet</p>
+          <p class="empty-sub">Click "Keep" on any file to save it permanently</p>
         </div>
-        <div class="track"><div class="fill" id="m-pfill"></div></div>
       </div>
-    </section>
+    </div>
+  </main>
 
-    <section class="m-section m-files-section">
-      <div class="m-section-label">From Mac</div>
-      <div id="m-list">
-        <div class="m-empty">No files yet</div>
+</div>
+
+<!-- ═══ MOBILE ════════════════════════════════════════════════════════════════ -->
+<div id="mobile" class="view m-view" style="display:none">
+
+  <header class="m-header">
+    <div class="brand">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+        <rect x="2" y="2" width="7" height="7" rx="1.5" fill="currentColor"/>
+        <rect x="11" y="2" width="7" height="7" rx="1.5" fill="currentColor"/>
+        <rect x="2" y="11" width="7" height="7" rx="1.5" fill="currentColor"/>
+        <rect x="13" y="13" width="2" height="2" fill="currentColor"/>
+        <rect x="16" y="13" width="2" height="2" fill="currentColor"/>
+        <rect x="13" y="16" width="5" height="2" fill="currentColor"/>
+      </svg>
+      <span class="brand-name">QR Share</span>
+    </div>
+    <div class="m-conn">
+      <span class="dot" id="m-dot"></span>
+      <span id="m-status">Connecting…</span>
+    </div>
+  </header>
+
+  <!-- Send section -->
+  <section class="m-section">
+    <div class="m-label">Send to Mac</div>
+
+    <!-- Primary big send button -->
+    <label class="m-hero-btn" id="m-main-label">
+      <input type="file" id="m-main-file" multiple hidden />
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M14 20V8M8 14l6-6 6 6"/><path d="M4 22h20"/>
+      </svg>
+      <span class="m-hero-title">Send any file</span>
+      <span class="m-hero-sub">Photos, videos, documents, audio…<br>No quality loss · up to 2 GB</span>
+    </label>
+
+    <!-- Quick access row -->
+    <div class="m-quick-row">
+      <label class="m-quick-btn">
+        <input type="file" accept="image/*" capture="camera" id="m-cam" hidden />
+        <span>📷</span> Camera
+      </label>
+      <label class="m-quick-btn">
+        <input type="file" accept="image/*,video/*" multiple id="m-media" hidden />
+        <span>🖼️</span> Photos
+      </label>
+      <label class="m-quick-btn">
+        <input type="file" accept="audio/*" multiple id="m-audio" hidden />
+        <span>🎵</span> Audio
+      </label>
+    </div>
+
+    <!-- Progress -->
+    <div id="m-prog" class="m-prog-box" style="display:none">
+      <div class="m-prog-top">
+        <span class="prog-name" id="m-prog-name"></span>
+        <span class="prog-pct" id="m-prog-pct">0%</span>
       </div>
-    </section>
+      <div class="track"><div class="fill" id="m-prog-fill"></div></div>
+    </div>
+  </section>
+
+  <!-- Tabs: From Mac / Library -->
+  <div class="m-tabs">
+    <button class="m-tab active" data-mtab="mac">From Mac</button>
+    <button class="m-tab"        data-mtab="lib">
+      Library
+      <span class="lib-badge" id="m-lib-badge" style="display:none"></span>
+    </button>
   </div>
 
-  <script src="app.js"></script>
+  <section class="m-section m-list-section">
+    <div id="m-mac-list" class="m-tab-panel">
+      <div class="m-empty">No files yet from Mac</div>
+    </div>
+    <div id="m-lib-list" class="m-tab-panel" style="display:none">
+      <div class="m-empty">Library is empty</div>
+    </div>
+  </section>
+
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script src="app.js"></script>
 </body>
 </html>
