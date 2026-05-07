@@ -1,0 +1,35 @@
+{
+  "name": "qr-share",
+  "version": "1.0.0",
+  "description": "macOS menu bar QR file sharing",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "node generate-icon.js",
+    "build": "electron-builder --mac"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.3",
+    "uuid": "^9.0.0",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "fr.ideeri.qrshare",
+    "productName": "QR Share",
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }]
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "assets/**"
+    ]
+  }
+}

@@ -1,116 +1,138 @@
 'use strict';
 
-const http = require('http');
-const { WebSocketServer } = require('ws');
+const express  = require('express');
+const http     = require('http');
+const { WebSocketServer, WebSocket } = require('ws');
+const multer   = require('multer');
+const { v4: uuidv4 } = require('uuid');
+const path     = require('path');
 
-const PORT = process.env.PORT ?? 3000;
-const SESSION_TTL_MS = 5 * 60 * 1000;
+const app    = express();
+const server = http.createServer(app);
+const wss    = new WebSocketServer({ server, path: '/ws' });
 
-// sessions: token -> { mac: WebSocket, ttlTimer: NodeJS.Timeout }
+// ── In-memory stores ─────────────────────────────────────────────────────────
+// sessions: token → { desktop: ws|null, mobile: ws|null }
 const sessions = new Map();
+// fileStore: fileId → { id, name, size, mimeType, buffer, from, token, ts }
+const fileStore = new Map();
 
-function destroySession(token, reason = 'session_destroyed') {
-  const session = sessions.get(token);
-  if (!session) return;
-  sessions.delete(token);
-  clearTimeout(session.ttlTimer);
-  if (session.mac?.readyState === session.mac?.OPEN) {
-    session.mac.close(4001, reason === 'session_expired' ? 'session_expired' : reason);
-  }
-  if (session.phone?.readyState === session.phone?.OPEN) {
-    session.phone.close(1000, reason);
-  }
-  console.log(`[${token}] session destroyed — ${reason}`);
-}
+// Evict files older than 2 h
+setInterval(() => {
+  const cut = Date.now() - 2 * 3600_000;
+  for (const [id, f] of fileStore) if (f.ts < cut) fileStore.delete(id);
+}, 5 * 60_000);
 
-function bridge(a, b, tokenForLog) {
-  a.on('message', (data, isBinary) => {
-    if (b.readyState === b.OPEN) b.send(data, { binary: isBinary });
+// ── Static ────────────────────────────────────────────────────────────────────
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ── Upload ────────────────────────────────────────────────────────────────────
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
+
+app.post('/upload', upload.single('file'), (req, res) => {
+  const { token, from } = req.query;
+  if (!req.file || !token) return res.status(400).json({ error: 'Missing file or token' });
+
+  const id = uuidv4();
+  fileStore.set(id, {
+    id, token, from: from || 'unknown',
+    name: req.file.originalname,
+    size: req.file.size,
+    mimeType: req.file.mimetype,
+    buffer: req.file.buffer,
+    ts: Date.now(),
   });
-  b.on('message', (data, isBinary) => {
-    if (a.readyState === a.OPEN) a.send(data, { binary: isBinary });
+
+  const payload = JSON.stringify({
+    type: 'file_ready', id, from,
+    name: req.file.originalname,
+    size: req.file.size,
+    mimeType: req.file.mimetype,
+    ts: Date.now(),
   });
 
-  const cleanup = (side) => () => {
-    console.log(`[${tokenForLog}] ${side} disconnected`);
-    destroySession(tokenForLog, 'peer_disconnected');
-  };
+  const s = sessions.get(token);
+  if (s) {
+    if (s.desktop?.readyState === WebSocket.OPEN) s.desktop.send(payload);
+    if (s.mobile?.readyState  === WebSocket.OPEN) s.mobile.send(payload);
+  }
 
-  a.on('close', cleanup('mac'));
-  b.on('close', cleanup('phone'));
-  a.on('error', (err) => console.error(`[${tokenForLog}] mac error: ${err.message}`));
-  b.on('error', (err) => console.error(`[${tokenForLog}] phone error: ${err.message}`));
-}
-
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('OK');
+  res.json({ ok: true, id });
 });
 
-const wss = new WebSocketServer({ noServer: true });
-
-server.on('upgrade', (req, socket, head) => {
-  const url = new URL(req.url, `http://localhost`);
-  const pathname = url.pathname;
-  const token = url.searchParams.get('token');
-
-  if (!token) {
-    socket.destroy();
-    return;
-  }
-
-  if (pathname === '/mac') {
-    wss.handleUpgrade(req, socket, head, (ws) => {
-      if (sessions.has(token)) {
-        ws.close(4009, 'token_conflict');
-        console.log(`[${token}] mac rejected — token_conflict`);
-        return;
-      }
-
-      const ttlTimer = setTimeout(() => {
-        destroySession(token, 'session_expired');
-      }, SESSION_TTL_MS);
-
-      sessions.set(token, { mac: ws, phone: null, ttlTimer });
-      console.log(`[${token}] session created`);
-
-      ws.on('error', (err) => console.error(`[${token}] mac error: ${err.message}`));
-      ws.on('close', () => {
-        if (sessions.has(token) && !sessions.get(token).phone) {
-          destroySession(token, 'mac_disconnected');
-        }
-      });
-    });
-    return;
-  }
-
-  if (pathname === '/phone') {
-    wss.handleUpgrade(req, socket, head, (ws) => {
-      const session = sessions.get(token);
-      if (!session) {
-        ws.close(4004, 'token_not_found');
-        console.log(`[${token}] phone rejected — token_not_found`);
-        return;
-      }
-
-      clearTimeout(session.ttlTimer);
-      session.phone = ws;
-      session.ttlTimer = null;
-      console.log(`[${token}] phone joined — bridging`);
-
-      // Remove individual close listener from mac before bridging
-      session.mac.removeAllListeners('close');
-      session.mac.removeAllListeners('error');
-
-      bridge(session.mac, ws, token);
-    });
-    return;
-  }
-
-  socket.destroy();
+// ── Download (attachment) ─────────────────────────────────────────────────────
+app.get('/download/:id', (req, res) => {
+  const f = fileStore.get(req.params.id);
+  if (!f) return res.status(404).send('File not found or expired');
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(f.name)}`);
+  res.setHeader('Content-Type', f.mimeType || 'application/octet-stream');
+  res.send(f.buffer);
 });
 
-process.on('uncaughtException', (err) => console.error(`uncaughtException: ${err.message}`));
-process.on('unhandledRejection', (reason) => console.error(`unhandledRejection: ${reason}`));
+// ── Preview (inline, images only) ────────────────────────────────────────────
+app.get('/preview/:id', (req, res) => {
+  const f = fileStore.get(req.params.id);
+  if (!f) return res.status(404).send('Not found');
+  if (!f.mimeType?.startsWith('image/')) return res.status(400).send('Not an image');
+  res.setHeader('Content-Type', f.mimeType);
+  res.send(f.buffer);
+});
 
-server.listen(PORT, () => console.log(`relay listening on port ${PORT}`));
+// ── File list ─────────────────────────────────────────────────────────────────
+app.get('/files/:token', (req, res) => {
+  const list = [];
+  for (const f of fileStore.values()) {
+    if (f.token === req.params.token) {
+      list.push({ id: f.id, name: f.name, size: f.size, mimeType: f.mimeType, from: f.from, ts: f.ts });
+    }
+  }
+  res.json(list.sort((a, b) => b.ts - a.ts));
+});
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+app.delete('/files/:id', (req, res) => {
+  const { token } = req.query;
+  const f = fileStore.get(req.params.id);
+  if (!f) return res.status(404).json({ error: 'Not found' });
+  if (f.token !== token) return res.status(403).json({ error: 'Forbidden' });
+  fileStore.delete(req.params.id);
+  res.json({ ok: true });
+});
+
+// ── WebSocket signaling ───────────────────────────────────────────────────────
+wss.on('connection', (ws, req) => {
+  const qs    = new URLSearchParams(req.url.split('?')[1] || '');
+  const token = qs.get('token');
+  const role  = qs.get('role'); // 'desktop' | 'mobile'
+
+  if (!token || !['desktop', 'mobile'].includes(role)) { ws.close(); return; }
+
+  if (!sessions.has(token)) sessions.set(token, { desktop: null, mobile: null });
+  const s = sessions.get(token);
+
+  // Close stale connection for this role
+  s[role]?.close();
+  s[role] = ws;
+
+  const peer = role === 'desktop' ? 'mobile' : 'desktop';
+
+  // Announce each other
+  if (s[peer]?.readyState === WebSocket.OPEN) {
+    s[peer].send(JSON.stringify({ type: `${role}_connected` }));
+    ws.send(JSON.stringify({ type: `${peer}_connected` }));
+  }
+
+  ws.on('close', () => {
+    if (s[role] !== ws) return;
+    s[role] = null;
+    if (s[peer]?.readyState === WebSocket.OPEN)
+      s[peer].send(JSON.stringify({ type: `${role}_disconnected` }));
+    if (!s.desktop && !s.mobile) sessions.delete(token);
+  });
+
+  ws.on('error', () => {});
+});
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`QR Share on :${PORT}`));

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0d0d0d" />
+  <title>QR Share</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Desktop view ─────────────────────────────────────────────── -->
+  <div id="desktop" class="view" style="display:none">
+    <aside class="sidebar">
+      <div class="brand">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <rect x="2" y="2" width="7" height="7" rx="1.5" fill="currentColor"/>
+          <rect x="11" y="2" width="7" height="7" rx="1.5" fill="currentColor"/>
+          <rect x="2" y="11" width="7" height="7" rx="1.5" fill="currentColor"/>
+          <rect x="13" y="13" width="2" height="2" fill="currentColor"/>
+          <rect x="16" y="13" width="2" height="2" fill="currentColor"/>
+          <rect x="13" y="16" width="5" height="2" fill="currentColor"/>
+        </svg>
+        <span class="brand-name">QR Share</span>
+      </div>
+
+      <div class="qr-section">
+        <div class="qr-frame">
+          <canvas id="qr-canvas"></canvas>
+        </div>
+        <div class="d-status">
+          <span class="dot" id="d-dot"></span>
+          <span id="d-status-text">Waiting for phone…</span>
+        </div>
+        <p class="qr-hint">Scan with iPhone to connect</p>
+      </div>
+
+      <label class="send-btn" id="d-send-label">
+        <input type="file" id="d-file-input" multiple hidden />
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M7 10V2M4 5l3-3 3 3"/>
+          <path d="M2 11h10" stroke-linecap="round"/>
+        </svg>
+        Send files to phone
+      </label>
+
+      <div class="d-progress-wrap" id="d-progress" style="display:none">
+        <div class="progress-filename" id="d-pname"></div>
+        <div class="track"><div class="fill" id="d-pfill"></div></div>
+      </div>
+
+      <div class="sidebar-foot">
+        <button class="btn-ghost" id="d-reset">↺ New session</button>
+      </div>
+    </aside>
+
+    <main class="workspace" id="workspace">
+      <div class="ws-header">
+        <span class="ws-title">Workspace</span>
+        <span class="ws-count" id="ws-count"></span>
+      </div>
+      <div class="ws-grid" id="ws-grid">
+        <div class="ws-empty" id="ws-empty">
+          <div class="ws-empty-icon">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" opacity=".25">
+              <rect x="4" y="4" width="14" height="14" rx="3" fill="white"/>
+              <rect x="22" y="4" width="14" height="14" rx="3" fill="white"/>
+              <rect x="4" y="22" width="14" height="14" rx="3" fill="white"/>
+              <rect x="25" y="25" width="4" height="4" fill="white"/>
+              <rect x="31" y="25" width="4" height="4" fill="white"/>
+              <rect x="25" y="31" width="10" height="4" fill="white"/>
+            </svg>
+          </div>
+          <p>Files you send or receive will appear here</p>
+          <p class="ws-empty-sub">Drop files anywhere to send them to your phone</p>
+        </div>
+      </div>
+
+      <!-- Drag overlay -->
+      <div class="drag-overlay" id="drag-overlay">
+        <div class="drag-inner">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M24 32V12M16 20l8-8 8 8"/>
+            <path d="M8 38h32" stroke-linecap="round"/>
+          </svg>
+          <p>Drop to send to phone</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ── Mobile view ──────────────────────────────────────────────── -->
+  <div id="mobile" class="view" style="display:none">
+    <header class="m-head">
+      <div class="brand">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+          <rect x="2" y="2" width="7" height="7" rx="1.5" fill="currentColor"/>
+          <rect x="11" y="2" width="7" height="7" rx="1.5" fill="currentColor"/>
+          <rect x="2" y="11" width="7" height="7" rx="1.5" fill="currentColor"/>
+          <rect x="13" y="13" width="2" height="2" fill="currentColor"/>
+          <rect x="16" y="13" width="2" height="2" fill="currentColor"/>
+          <rect x="13" y="16" width="5" height="2" fill="currentColor"/>
+        </svg>
+        <span class="brand-name">QR Share</span>
+      </div>
+      <div class="m-status-pill" id="m-status-pill">
+        <span class="dot" id="m-dot"></span>
+        <span id="m-status-text">Connecting…</span>
+      </div>
+    </header>
+
+    <section class="m-section">
+      <div class="m-section-label">Send to Mac</div>
+      <div class="m-btns">
+        <label class="m-btn">
+          <input type="file" accept="image/*" capture="camera" id="m-cam" hidden />
+          <span class="m-btn-icon">📷</span>
+          <span class="m-btn-label">Camera</span>
+        </label>
+        <label class="m-btn">
+          <input type="file" accept="image/*,video/*" multiple id="m-photos" hidden />
+          <span class="m-btn-icon">🖼️</span>
+          <span class="m-btn-label">Photos</span>
+        </label>
+        <label class="m-btn">
+          <input type="file" multiple id="m-any" hidden />
+          <span class="m-btn-icon">📁</span>
+          <span class="m-btn-label">Files</span>
+        </label>
+      </div>
+
+      <div class="m-progress-wrap" id="m-progress" style="display:none">
+        <div class="m-progress-top">
+          <span class="progress-filename" id="m-pname"></span>
+          <span class="m-ppct" id="m-ppct">0%</span>
+        </div>
+        <div class="track"><div class="fill" id="m-pfill"></div></div>
+      </div>
+    </section>
+
+    <section class="m-section m-files-section">
+      <div class="m-section-label">From Mac</div>
+      <div id="m-list">
+        <div class="m-empty">No files yet</div>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
